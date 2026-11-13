@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>J.A.R.V.I.S.</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap">
+<style>
+:root{--bg:#02070f;--blue:#19b8ff;--blue2:#0a6fb0;--text:#bfe9ff;--panel:rgba(10,40,70,.35);
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html,body{height:100%;margin:0}
+body{background:radial-gradient(circle at 50% 35%,#06203a 0%,var(--bg) 70%);color:var(--text);
+font-family:'Orbitron','Trebuchet MS',Arial,sans-serif;display:flex;flex-direction:column;overflow:hidden}
+header{text-align:center;padding:14px 10px 0}
+h1{margin:0;font-size:clamp(20px,4vw,34px);letter-spacing:.5em;color:var(--blue);text-shadow:0 0 18px var(--blue)}
+#status{margin-top:6px;font-size:13px;letter-spacing:.3em;opacity:.9}
+#status b{color:#fff}
+main{flex:1;display:flex;flex-direction:column;min-height:0;max-width:900px;width:100%;margin:0 auto}
+#core{flex:0 0 clamp(190px,34vh,340px);display:flex;justify-content:center;align-items:center}
+svg{height:100%;max-width:100%;overflow:visible}
+.ring{fill:none;stroke:var(--blue);transform-origin:200px 200px}
+.r1{stroke-width:2;stroke-dasharray:6 10;animation:spin 24s linear infinite}
+.r2{stroke-width:3;stroke-dasharray:90 40 20 40;animation:spin 14s linear infinite reverse}
+.r3{stroke-width:1.5;stroke-dasharray:2 6;animation:spin 40s linear infinite}
+.r4{stroke-width:4;stroke-dasharray:140 60;animation:spin 8s linear infinite}
+#orb{fill:url(#g);transform-origin:200px 200px;animation:pulse 3s ease-in-out infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes pulse{50%{transform:scale(1.12);opacity:.8}}
+body[data-state=listening] #orb{animation-duration:.8s;fill:url(#g2)}
+body[data-state=thinking] .r4{animation-duration:1.5s}
+body[data-state=thinking] .r2{animation-duration:3s}
+body[data-state=speaking] #orb{animation-duration:.45s}
+#chat{flex:1;overflow-y:auto;margin:8px 14px;padding:12px;border:1px solid var(--blue2);border-radius:14px;
+background:var(--panel);display:flex;flex-direction:column;gap:10px;min-height:0;-webkit-overflow-scrolling:touch}
+.m{max-width:80%;padding:9px 13px;border-radius:12px;font-size:15px;line-height:1.45;font-family:system-ui,Arial,sans-serif}
+.j{align-self:flex-start;border:1px solid var(--blue);background:rgba(25,184,255,.1)}
+.u{align-self:flex-end;background:rgba(255,255,255,.08);border:1px solid #456}
+#bar{display:flex;gap:10px;padding:0 14px 14px;align-items:center}
+#in{flex:1;font-size:16px;padding:13px 16px;border-radius:26px;border:1px solid var(--blue2);
+background:rgba(0,20,40,.7);color:#fff;outline:none;font-family:system-ui,Arial,sans-serif}
+#in:focus{border-color:var(--blue);box-shadow:0 0 10px var(--blue)}
+button{width:50px;height:50px;border-radius:50%;border:1px solid var(--blue);background:rgba(25,184,255,.12);
+color:var(--blue);font-size:22px;cursor:pointer;flex:none}
+button:active{background:var(--blue);color:#000}
+#mic.on{background:var(--blue);color:#000;box-shadow:0 0 20px var(--blue)}
+#spk.off{opacity:.4}
+</style>
+</head>
+<body data-state="idle">
+<header>
+  <h1>J.A.R.V.I.S.</h1>
+  <div id="status">STATUS: <b id="st">BEREIT</b></div>
+</header>
+<main>
+  <div id="core">
+    <svg viewBox="0 0 400 400" aria-hidden="true">
+      <defs>
+        <radialGradient id="g"><stop offset="0" stop-color="#fff"/><stop offset=".35" stop-color="#19b8ff"/><stop offset="1" stop-color="#19b8ff" stop-opacity="0"/></radialGradient>
+        <radialGradient id="g2"><stop offset="0" stop-color="#fff"/><stop offset=".35" stop-color="#5dffd0"/><stop offset="1" stop-color="#19b8ff" stop-opacity="0"/></radialGradient>
+      </defs>
+      <circle class="ring r3" cx="200" cy="200" r="190"/>
+      <circle class="ring r1" cx="200" cy="200" r="165"/>
+      <circle class="ring r2" cx="200" cy="200" r="135"/>
+      <circle class="ring r4" cx="200" cy="200" r="105"/>
+      <circle id="orb" cx="200" cy="200" r="75"/>
+    </svg>
+  </div>
+  <div id="chat"></div>
+  <div id="bar">
+    <button id="mic" title="Mikrofon">🎤</button>
+    <input id="in" placeholder="Nachricht an JARVIS …" autocomplete="off">
+    <button id="send" title="Senden">➤</button>
+    <button id="spk" title="Sprachausgabe an/aus">🔊</button>
+  </div>
+</main>
+<script>
+const chat=document.getElementById('chat'),inp=document.getElementById('in'),
+st=document.getElementById('st'),mic=document.getElementById('mic'),spk=document.getElementById('spk');
+let speakOn=true;
+
+function setState(s,label){document.body.dataset.state=s;st.textContent=label}
+function add(text,who){const d=document.createElement('div');d.className='m '+who;d.textContent=text;
+chat.appendChild(d);chat.scrollTop=chat.scrollHeight}
+
+// ---- GEHIRN (Platzhalter, noch KEINE echte KI) ----
+function brain(t){
+  t=t.toLowerCase();
+  if(/hallo|hi|hey|guten/.test(t))return 'Hallo! Schön, dass du da bist. Wie kann ich helfen?';
+  if(/uhr|zeit/.test(t))return 'Es ist '+new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})+' Uhr.';
+  if(/datum|tag|heute/.test(t))return 'Heute ist '+new Date().toLocaleDateString('de-DE',{weekday:'long',day:'numeric',month:'long',year:'numeric'})+'.';
+  if(/wer bist|name/.test(t))return 'Ich bin J.A.R.V.I.S. – im Moment noch ein Prototyp ohne echte KI.';
+  return 'Das kann ich noch nicht beantworten. Mein echtes Gehirn (KI) bauen wir im nächsten Schritt ein.';
+}
+
+function speak(text){
+  if(!speakOn||!('speechSynthesis' in window)){setState('idle','BEREIT');return}
+  const u=new SpeechSynthesisUtterance(text);u.lang='de-DE';
+  u.onstart=()=>setState('speaking','SPRICHT');
+  u.onend=u.onerror=()=>setState('idle','BEREIT');
+  speechSynthesis.cancel();speechSynthesis.speak(u);
+}
+
+function handle(text){
+  text=text.trim();if(!text)return;
+  add(text,'u');setState('thinking','DENKT NACH');
+  setTimeout(()=>{const a=brain(text);add(a,'j');speak(a);
+    if(!speakOn)setState('idle','BEREIT')},700);
+}
+
+document.getElementById('send').onclick=()=>{handle(inp.value);inp.value=''};
+inp.addEventListener('keydown',e=>{if(e.key==='Enter'){handle(inp.value);inp.value=''}});
+spk.onclick=()=>{speakOn=!speakOn;spk.classList.toggle('off',!speakOn);if(!speakOn)speechSynthesis.cancel()};
+
+// ---- Spracheingabe (Safari/Chrome, falls unterstützt) ----
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+let rec=null;
+if(SR){
+  rec=new SR();rec.lang='de-DE';rec.interimResults=false;
+  rec.onstart=()=>{mic.classList.add('on');setState('listening','HÖRT ZU')};
+  rec.onend=()=>{mic.classList.remove('on');if(document.body.dataset.state==='listening')setState('idle','BEREIT')};
+  rec.onerror=e=>{mic.classList.remove('on');setState('idle','MIKROFON-FEHLER');
+    const hilfe={'not-allowed':'Das Mikrofon ist blockiert. Entweder hast du die Erlaubnis abgelehnt, oder die Seite darf es hier nicht nutzen (z. B. weil sie eingebettet ist). Öffne die Seite direkt in Safari.',
+    'service-not-allowed':'Die Spracherkennung ist auf dem iPad aus. Einstellungen > Allgemein > Tastatur > Diktierfunktion aktivieren.',
+    'no-speech':'Ich habe nichts gehört. Tippe auf das Mikrofon und sprich sofort.',
+    'audio-capture':'Es wurde kein Mikrofon gefunden.',
+    'network':'Die Spracherkennung braucht Internet.'};
+    add('Mikrofon-Fehler: '+e.error+'. '+(hilfe[e.error]||'Unbekannter Fehler.')+(window.self!==window.top?' (Hinweis: Die Seite läuft gerade eingebettet.)':''),'j')};
+  rec.onresult=e=>handle(e.results[0][0].transcript);
+}
+mic.onclick=()=>{
+  if(!rec){add('Spracheingabe wird von diesem Browser nicht unterstützt. Tipp: Tippe ins Textfeld und nutze das Mikrofon-Symbol auf der iPad-Tastatur (Diktieren).','j');return}
+  try{rec.start()}catch(e){rec.stop()}
+};
+
+add('System online. Ich bin ein Prototyp: Oberfläche, Text-Chat, Sprachausgabe und Mikrofon sind eingebaut – ein echtes KI-Gehirn kommt im nächsten Schritt.','j');
+</script>
+</body>
+</html>
